@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Leak Checker - RITAC Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
+    <style>
+        :root {
+            --color-primary: #06b6d4;
+            --color-primary-dark: #0891b2;
+            --color-danger: #ef4444;
+            --color-success: #22c55e;
+            --color-warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .glassmorphism {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-field {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #06b6d4;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+            background: rgba(30, 41, 59, 1);
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(6, 182, 212, 0.4);
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            font-size: 24px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .breach-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 4px;
+        }
+
+        .breach-badge.critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .breach-badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.5);
+        }
+
+        .breach-badge.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #bfdbfe;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+        }
+
+        .status-banner {
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .status-banner.clean {
+            background: rgba(34, 197, 94, 0.1);
+            border: 2px solid rgba(34, 197, 94, 0.5);
+        }
+
+        .status-banner.compromised {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .status-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .status-banner.clean .status-icon {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .status-banner.compromised .status-icon {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .breach-group {
+            margin-bottom: 20px;
+        }
+
+        .breach-group-header {
+            padding: 16px;
+            background: rgba(51, 65, 85, 0.6);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #06b6d4;
+        }
+
+        .breach-item {
+            padding: 16px;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .breach-item:hover {
+            background: rgba(30, 41, 59, 0.6);
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .col {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .col-full {
+            flex: 1 0 100%;
+        }
+
+        .col-2 {
+            flex: 0 0 calc(50% - 8px);
+            min-width: 250px;
+        }
+
+        @media (max-width: 768px) {
+            .col-2 {
+                flex: 1 0 100%;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+        }
+
+        .nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 0 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #e2e8f0;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .nav-brand:hover {
+            color: #06b6d4;
+        }
+
+        .nav-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .search-container {
+            margin-bottom: 40px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+        }
+
+        .select-field {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .select-field:focus {
+            outline: none;
+            border-color: #06b6d4;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+        }
+
+        .error-message {
+            color: #fca5a5;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .success-message {
+            color: #86efac;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            border-top-color: #06b6d4;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            background: rgba(15, 23, 42, 0.5);
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 32px 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table thead {
+            background: rgba(51, 65, 85, 0.6);
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .history-table th {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+        }
+
+        .history-table tbody tr:hover {
+            background: rgba(30, 41, 59, 0.4);
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            bottom: -1px;
+        }
+
+        .tab-button.active {
+            color: #06b6d4;
+            border-bottom-color: #06b6d4;
+        }
+
+        .tab-button:hover:not(.active) {
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="#" class="nav-brand">
+            <div class="nav-logo">⚔️</div>
+            <div>
+                <div>LeakCheck Scanner</div>
+                <div style="font-size: 11px; color: #94a3b8; font-weight: 400;">RITAC Solutions</div>
+            </div>
+        </a>
+        <div style="font-size: 12px; color: #94a3b8;">Enterprise Database Breach Detection</div>
+    </nav>
+
+    <div class="container">
+        {/* Header */}
+        <div style="margin-bottom: 40px;">
+            <h1 class="gradient-text" style="font-size: 42px; margin: 0 0 12px 0; font-weight: 700;">LeakCheck Intelligence</h1>
+            <p style="color: #94a3b8; margin: 0; font-size: 16px;">Enterprise-grade database breach investigation platform powered by LeakCheck.io API</p>
+        </div>
+
+        {/* Stats Overview */}
+        <div class="row" id="statsContainer" style="margin-bottom: 40px;">
+            <div class="col-2">
+                <div class="card stat-card">
+                    <div class="stat-icon" style="background: rgba(6, 182, 212, 0.2); color: #06b6d4;">🔍</div>
+                    <div class="stat-label">Total Searches</div>
+                    <div class="stat-value" style="color: #06b6d4;" id="totalSearches">0</div>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="card stat-card">
+                    <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;">⚠️</div>
+                    <div class="stat-label">Compromised</div>
+                    <div class="stat-value" style="color: #fca5a5;" id="compromisedCount">0</div>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="card stat-card">
+                    <div class="stat-icon" style="background: rgba(34, 197, 94, 0.2); color: #86efac;">✓</div>
+                    <div class="stat-label">Clean Results</div>
+                    <div class="stat-value" style="color: #86efac;" id="cleanCount">0</div>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="card stat-card">
+                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fcd34d;">📊</div>
+                    <div class="stat-label">Total Breaches Found</div>
+                    <div class="stat-value" style="color: #fcd34d;" id="totalBreaches">0</div>
+                </div>
+            </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="switchTab('search')">🔍 Search Database</button>
+            <button class="tab-button" onclick="switchTab('history')">📋 Search History</button>
+        </div>
+
+        {/* Search Tab */}
+        <div id="searchTab" class="search-container card" style="display: block;">
+            <h2 style="margin-top: 0; color: #e2e8f0;">Check for Data Breaches</h2>
+            <form class="search-form" id="searchForm" onsubmit="performSearch(event)">
+                <div class="form-group" style="flex: 2; min-width: 250px;">
+                    <label class="form-label">Search Query</label>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="input-field" 
+                        placeholder="Enter email, username, domain, or phone..." 
+                        required
+                    />
+                    <div class="error-message" id="searchError"></div>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 150px;">
+                    <label class="form-label">Query Type</label>
+                    <select id="queryType" class="select-field">
+                        <option value="auto">Auto-Detect</option>
+                        <option value="email">Email</option>
+                        <option value="username">Username</option>
+                        <option value="domain">Domain</option>
+                        <option value="phone">Phone</option>
+                        <option value="hash">Hash</option>
+                        <option value="keyword">Keyword</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary" id="searchBtn" style="margin-bottom: 0; height: 44px; display: flex; align-items: center; gap: 8px;">
+                    <span id="searchBtnText">Search</span>
+                    <span id="searchBtnLoader" class="loading" style="display: none;"></span>
+                </button>
+            </form>
+
+            {/* Results */}
+            <div id="resultsContainer" style="margin-top: 32px; display: none;">
+                <div class="status-banner clean" id="statusBanner">
+                    <div class="status-icon">✓</div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #86efac;">No Breaches Found</h3>
+                        <p style="margin: 0; color: #cbd5e1; font-size: 14px;" id="statusMessage">Your data appears to be safe in known breaches</p>
+                    </div>
+                </div>
+
+                {/* Breach Summary */}
+                <div id="breachSummary" style="display: none; margin-bottom: 32px;">
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 12px 0; color: #fca5a5; display: flex; align-items: center; gap: 8px;">🔴 Critical Alert: Sensitive Data Exposed</h3>
+                        <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 14px;">Passwords or sensitive credentials were found in the breached data. <strong style="color: #fca5a5;">Immediate action required!</strong></p>
+                        <div id="criticalFields" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    </div>
+
+                    {/* Summary Cards */}
+                    <div class="row" style="margin-bottom: 24px;">
+                        <div class="col-2">
+                            <div class="card stat-card">
+                                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;">📊</div>
+                                <div class="stat-label">Breach Sources</div>
+                                <div class="stat-value" style="color: #fca5a5;" id="breachSources">0</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="card stat-card">
+                                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fcd34d;">⚠️</div>
+                                <div class="stat-label">Total Exposures</div>
+                                <div class="stat-value" style="color: #fcd34d;" id="totalExposures">0</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="card stat-card">
+                                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fcd34d;">🔑</div>
+                                <div class="stat-label">Data Fields Exposed</div>
+                                <div class="stat-value" style="color: #fcd34d;" id="dataFields">0</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="card stat-card">
+                                <div class="stat-icon" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe;">📅</div>
+                                <div class="stat-label">First Breach</div>
+                                <div style="color: #d8b4fe; font-size: 16px; font-weight: 600;" id="oldestBreach">Unknown</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* All Exposed Fields */}
+                    <div class="card" style="margin-bottom: 24px;">
+                        <h3 style="margin-top: 0; color: #e2e8f0; display: flex; align-items: center; gap: 8px;">⚠️ All Exposed Data Fields</h3>
+                        <div id="allFields" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    </div>
+                </div>
+
+                {/* Breach Details */}
+                <div id="breachDetails" style="display: none;">
+                    <h3 style="color: #e2e8f0; margin-bottom: 16px;">Breach Details by Source</h3>
+                    <div id="breachGroups"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* History Tab */}
+        <div id="historyTab" style="display: none;">
+            <div class="card">
+                <h2 style="margin-top: 0; color: #e2e8f0;">Search History</h2>
+                <table class="history-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Query</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Results</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #94a3b8; padding: 32px;">No search history yet. Start by searching above.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p style="margin: 0;">Powered by <strong style="color: #06b6d4;">LeakCheck.io API v2</strong> | RITAC Solutions Enterprise Database Breach Investigation Platform</p>
+        <p style="margin: 8px 0 0 0;">© 2026 RITAC Solutions LLC. All rights reserved. | <a href="#" style="color: #06b6d4; text-decoration: none;">GitHub</a></p>
+    </footer>
+
+    <script>
+        let searchHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
+
+        async function performSearch(e) {
+            e.preventDefault();
+            const query = document.getElementById('searchInput').value.trim();
+            const queryType = document.getElementById('queryType').value;
+            const searchError = document.getElementById('searchError');
+            const searchBtn = document.getElementById('searchBtn');
+            const searchBtnText = document.getElementById('searchBtnText');
+            const searchBtnLoader = document.getElementById('searchBtnLoader');
+
+            searchError.textContent = '';
+
+            if (!query) {
+                searchError.textContent = 'Please enter a search query';
+                return;
+            }
+
+            if (query.length < 3) {
+                searchError.textContent = 'Query must be at least 3 characters';
+                return;
+            }
+
+            searchBtn.disabled = true;
+            searchBtnText.style.display = 'none';
+            searchBtnLoader.style.display = 'block';
+
+            try {
+                const apiKey = prompt('Enter your LeakCheck.io API Key:');
+                if (!apiKey) {
+                    searchError.textContent = 'API key is required';
+                    searchBtn.disabled = false;
+                    searchBtnText.style.display = 'inline';
+                    searchBtnLoader.style.display = 'none';
+                    return;
+                }
+
+                const url = `https://leakcheck.io/api/v2/query/${encodeURIComponent(query)}${queryType !== 'auto' ? `?type=${queryType}` : ''}`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-API-Key': apiKey
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        searchError.textContent = 'Invalid API key';
+                    } else if (response.status === 429) {
+                        searchError.textContent = 'Rate limit exceeded. Please try again later.';
+                    } else {
+                        searchError.textContent = `API Error: ${response.status}`;
+                    }
+                    searchBtn.disabled = false;
+                    searchBtnText.style.display = 'inline';
+                    searchBtnLoader.style.display = 'none';
+                    return;
+                }
+
+                const data = await response.json();
+                displayResults(data, query, queryType);
+                
+                const historyEntry = {
+                    query,
+                    queryType,
+                    resultsCount: data.found || 0,
+                    status: data.found > 0 ? 'compromised' : 'clean',
+                    timestamp: new Date().toLocaleString()
+                };
+                
+                searchHistory.unshift(historyEntry);
+                localStorage.setItem('searchHistory', JSON.stringify(searchHistory.slice(0, 100)));
+                updateStats();
+                updateHistoryTable();
+
+            } catch (error) {
+                searchError.textContent = `Error: ${error.message}`;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtnText.style.display = 'inline';
+                searchBtnLoader.style.display = 'none';
+            }
+        }
+
+        function displayResults(data, query, queryType) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            const statusBanner = document.getElementById('statusBanner');
+            const statusMessage = document.getElementById('statusMessage');
+            const breachSummary = document.getElementById('breachSummary');
+            const breachDetails = document.getElementById('breachDetails');
+
+            resultsContainer.style.display = 'block';
+
+            if (data.found === 0) {
+                statusBanner.className = 'status-banner clean';
+                statusBanner.innerHTML = `
+                    <div class="status-icon">✓</div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #86efac;">No Breaches Found</h3>
+                        <p style="margin: 0; color: #cbd5e1; font-size: 14px;">"${query}" appears to be safe - no data breaches found in our database</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 12px; color: #94a3b8;">API Quota</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #06b6d4;">${data.quota || 'N/A'}</div>
+                    </div>
+                `;
+                breachSummary.style.display = 'none';
+                breachDetails.style.display = 'none';
+                return;
+            }
+
+            statusBanner.className = 'status-banner compromised';
+            statusBanner.innerHTML = `
+                <div class="status-icon">⚠️</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #fca5a5;">${data.found} Breach${data.found > 1 ? 'es' : ''} Detected</h3>
+                    <p style="margin: 0; color: #cbd5e1; font-size: 14px;">"${query}" has been compromised in ${data.found} known data breach${data.found > 1 ? 'es' : ''}</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px; color: #94a3b8;">API Quota</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #06b6d4;">${data.quota || 'N/A'}</div>
+                </div>
+            `;
+
+            // Process breach data
+            const uniqueSources = new Set();
+            const allFields = new Set();
+            const criticalFields = new Set();
+            let hasPasswords = false;
+            let oldestBreach = null;
+
+            data.result?.forEach(breach => {
+                uniqueSources.add(breach.source.name);
+                
+                breach.fields?.forEach(field => {
+                    allFields.add(field);
+                    if (field.toLowerCase().includes('password') || field.toLowerCase().includes('pass')) {
+                        criticalFields.add(field);
+                        hasPasswords = true;
+                    }
+                });
+
+                if (breach.source.breach_date) {
+                    const date = new Date(breach.source.breach_date);
+                    if (!oldestBreach || date < new Date(oldestBreach)) {
+                        oldestBreach = breach.source.breach_date;
+                    }
+                }
+            });
+
+            // Display critical alert if passwords found
+            if (hasPasswords) {
+                const criticalFieldsDiv = document.getElementById('criticalFields');
+                criticalFieldsDiv.innerHTML = Array.from(criticalFields)
+                    .map(field => `<span class="breach-badge critical">🔑 ${field.replace(/_/g, ' ')}</span>`)
+                    .join('');
+            } else {
+                document.querySelector('div[style*="rgba(239, 68, 68"]') && 
+                    (document.querySelector('div[style*="rgba(239, 68, 68"]').style.display = 'none');
+            }
+
+            // Update summary cards
+            document.getElementById('breachSources').textContent = uniqueSources.size;
+            document.getElementById('totalExposures').textContent = data.found;
+            document.getElementById('dataFields').textContent = allFields.size;
+            document.getElementById('oldestBreach').textContent = oldestBreach || 'Unknown';
+
+            // Display all fields
+            const allFieldsDiv = document.getElementById('allFields');
+            allFieldsDiv.innerHTML = Array.from(allFields)
+                .map(field => {
+                    const isCritical = field.toLowerCase().includes('password') || 
+                                      field.toLowerCase().includes('pass') ||
+                                      field.toLowerCase().includes('ssn') ||
+                                      field.toLowerCase().includes('credit');
+                    const isEmail = field.toLowerCase().includes('email') || field.toLowerCase().includes('mail');
+                    
+                    const badgeClass = isCritical ? 'critical' : (isEmail ? 'warning' : 'info');
+                    const prefix = isCritical ? '🔴' : (isEmail ? '📧' : '📌');
+                    return `<span class="breach-badge ${badgeClass}">${prefix} ${field.replace(/_/g, ' ')}</span>`;
+                })
+                .join('');
+
+            breachSummary.style.display = 'block';
+
+            // Display breach details
+            const breachGroupsDiv = document.getElementById('breachGroups');
+            const grouped = {};
+            
+            data.result?.forEach(breach => {
+                const sourceName = breach.source.name;
+                if (!grouped[sourceName]) grouped[sourceName] = [];
+                grouped[sourceName].push(breach);
+            });
+
+            breachGroupsDiv.innerHTML = Object.entries(grouped)
+                .map(([source, breaches]) => `
+                    <div class="breach-group">
+                        <div class="breach-group-header">
+                            <h4 style="margin: 0; color: #06b6d4; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 18px;">📁</span>
+                                ${source}
+                                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">${breaches.length} record${breaches.length > 1 ? 's' : ''}</span>
+                            </h4>
+                        </div>
+                        ${breaches.map(breach => `
+                            <div class="breach-item">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                    <strong style="color: #e2e8f0;">${breach.source.name}</strong>
+                                    ${breach.source.breach_date ? `<span style="font-size: 12px; color: #94a3b8;">📅 ${new Date(breach.source.breach_date).toLocaleDateString()}</span>` : ''}
+                                </div>
+                                ${breach.fields ? `<div style="margin-top: 8px;">
+                                    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">Exposed Fields:</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                        ${breach.fields.map(field => `<span class="breach-badge info">${field.replace(/_/g, ' ')}</span>`).join('')}
+                                    </div>
+                                </div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `)
+                .join('');
+
+            breachDetails.style.display = 'block';
+        }
+
+        function updateStats() {
+            const total = searchHistory.length;
+            const compromised = searchHistory.filter(h => h.status === 'compromised').length;
+            const clean = searchHistory.filter(h => h.status === 'clean').length;
+            const totalBreaches = searchHistory.reduce((sum, h) => sum + h.resultsCount, 0);
+
+            document.getElementById('totalSearches').textContent = total;
+            document.getElementById('compromisedCount').textContent = compromised;
+            document.getElementById('cleanCount').textContent = clean;
+            document.getElementById('totalBreaches').textContent = totalBreaches;
+        }
+
+        function updateHistoryTable() {
+            const historyBody = document.getElementById('historyBody');
+            
+            if (searchHistory.length === 0) {
+                historyBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 32px;">No search history yet.</td></tr>';
+                return;
+            }
+
+            historyBody.innerHTML = searchHistory.map((entry, idx) => `
+                <tr>
+                    <td>${entry.query}</td>
+                    <td><span style="font-size: 12px; color: #94a3b8;">${entry.queryType}</span></td>
+                    <td>
+                        <span class="breach-badge ${entry.status === 'compromised' ? 'critical' : entry.status === 'clean' ? 'info' : 'warning'}">
+                            ${entry.status === 'compromised' ? '⚠️ Compromised' : entry.status === 'clean' ? '✓ Clean' : '❌ Error'}
+                        </span>
+                    </td>
+                    <td><strong>${entry.resultsCount}</strong></td>
+                    <td style="font-size: 12px; color: #94a3b8;">${entry.timestamp}</td>
+                </tr>
+            `).join('');
+        }
+
+        function switchTab(tab) {
+            const searchTab = document.getElementById('searchTab');
+            const historyTab = document.getElementById('historyTab');
+            const buttons = document.querySelectorAll('.tab-button');
+
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'search') {
+                searchTab.style.display = 'block';
+                historyTab.style.display = 'none';
+            } else {
+                searchTab.style.display = 'none';
+                historyTab.style.display = 'block';
+            }
+        }
+
+        // Initialize
+        updateStats();
+        updateHistoryTable();
+    </script>
+</body>
+</html>
