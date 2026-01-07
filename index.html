@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Leak Checker - RITAC Solutions</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
     <style>
         :root {
             --color-primary: #06b6d4;
@@ -444,13 +442,11 @@
     </nav>
 
     <div class="container">
-        {/* Header */}
         <div style="margin-bottom: 40px;">
             <h1 class="gradient-text" style="font-size: 42px; margin: 0 0 12px 0; font-weight: 700;">LeakCheck Intelligence</h1>
             <p style="color: #94a3b8; margin: 0; font-size: 16px;">Enterprise-grade database breach investigation platform powered by LeakCheck.io API</p>
         </div>
 
-        {/* Stats Overview */}
         <div class="row" id="statsContainer" style="margin-bottom: 40px;">
             <div class="col-2">
                 <div class="card stat-card">
@@ -482,13 +478,11 @@
             </div>
         </div>
 
-        {/* Tab Navigation */}
         <div class="tab-buttons">
             <button class="tab-button active" onclick="switchTab('search')">🔍 Search Database</button>
             <button class="tab-button" onclick="switchTab('history')">📋 Search History</button>
         </div>
 
-        {/* Search Tab */}
         <div id="searchTab" class="search-container card" style="display: block;">
             <h2 style="margin-top: 0; color: #e2e8f0;">Check for Data Breaches</h2>
             <form class="search-form" id="searchForm" onsubmit="performSearch(event)">
@@ -521,7 +515,6 @@
                 </button>
             </form>
 
-            {/* Results */}
             <div id="resultsContainer" style="margin-top: 32px; display: none;">
                 <div class="status-banner clean" id="statusBanner">
                     <div class="status-icon">✓</div>
@@ -531,7 +524,6 @@
                     </div>
                 </div>
 
-                {/* Breach Summary */}
                 <div id="breachSummary" style="display: none; margin-bottom: 32px;">
                     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 12px 0; color: #fca5a5; display: flex; align-items: center; gap: 8px;">🔴 Critical Alert: Sensitive Data Exposed</h3>
@@ -539,7 +531,6 @@
                         <div id="criticalFields" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                     </div>
 
-                    {/* Summary Cards */}
                     <div class="row" style="margin-bottom: 24px;">
                         <div class="col-2">
                             <div class="card stat-card">
@@ -571,14 +562,12 @@
                         </div>
                     </div>
 
-                    {/* All Exposed Fields */}
                     <div class="card" style="margin-bottom: 24px;">
                         <h3 style="margin-top: 0; color: #e2e8f0; display: flex; align-items: center; gap: 8px;">⚠️ All Exposed Data Fields</h3>
                         <div id="allFields" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                     </div>
                 </div>
 
-                {/* Breach Details */}
                 <div id="breachDetails" style="display: none;">
                     <h3 style="color: #e2e8f0; margin-bottom: 16px;">Breach Details by Source</h3>
                     <div id="breachGroups"></div>
@@ -586,7 +575,6 @@
             </div>
         </div>
 
-        {/* History Tab */}
         <div id="historyTab" style="display: none;">
             <div class="card">
                 <h2 style="margin-top: 0; color: #e2e8f0;">Search History</h2>
@@ -612,7 +600,7 @@
 
     <footer class="footer">
         <p style="margin: 0;">Powered by <strong style="color: #06b6d4;">LeakCheck.io API v2</strong> | RITAC Solutions Enterprise Database Breach Investigation Platform</p>
-        <p style="margin: 8px 0 0 0;">© 2026 RITAC Solutions LLC. All rights reserved. | <a href="#" style="color: #06b6d4; text-decoration: none;">GitHub</a></p>
+        <p style="margin: 8px 0 0 0;">© 2026 RITAC Solutions LLC. All rights reserved. | <a href="https://github.com/ritacsolutionsllc/leak-checker-app" style="color: #06b6d4; text-decoration: none;">GitHub Repository</a></p>
     </footer>
 
     <script>
@@ -741,7 +729,6 @@
                 </div>
             `;
 
-            // Process breach data
             const uniqueSources = new Set();
             const allFields = new Set();
             const criticalFields = new Set();
@@ -767,24 +754,18 @@
                 }
             });
 
-            // Display critical alert if passwords found
             if (hasPasswords) {
                 const criticalFieldsDiv = document.getElementById('criticalFields');
                 criticalFieldsDiv.innerHTML = Array.from(criticalFields)
                     .map(field => `<span class="breach-badge critical">🔑 ${field.replace(/_/g, ' ')}</span>`)
                     .join('');
-            } else {
-                document.querySelector('div[style*="rgba(239, 68, 68"]') && 
-                    (document.querySelector('div[style*="rgba(239, 68, 68"]').style.display = 'none');
             }
 
-            // Update summary cards
             document.getElementById('breachSources').textContent = uniqueSources.size;
             document.getElementById('totalExposures').textContent = data.found;
             document.getElementById('dataFields').textContent = allFields.size;
             document.getElementById('oldestBreach').textContent = oldestBreach || 'Unknown';
 
-            // Display all fields
             const allFieldsDiv = document.getElementById('allFields');
             allFieldsDiv.innerHTML = Array.from(allFields)
                 .map(field => {
@@ -802,7 +783,6 @@
 
             breachSummary.style.display = 'block';
 
-            // Display breach details
             const breachGroupsDiv = document.getElementById('breachGroups');
             const grouped = {};
             
@@ -895,7 +875,6 @@
             }
         }
 
-        // Initialize
         updateStats();
         updateHistoryTable();
     </script>
