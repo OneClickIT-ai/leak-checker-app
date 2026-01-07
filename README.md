@@ -31,9 +31,31 @@ An advanced web application that leverages the LeakCheck.io API to search and an
 
 ## 🔧 Installation
 
+USAGE EXAMPLES:
 ### Option 1: Use Directly (No Installation)
 
 Simply visit the [live application](https://ritacsolutionsllc.github.io/leak-checker-app) and enter your API key when prompted.
+## 📚 Detailed Usage Examples
+
+### Basic Search Workflow
+
+1. **Open the application** in your browser
+2. **Enter your LeakCheck.io API key** when prompted (first search only per session)
+3. **Select query type** from dropdown:
+   - Auto-detect (default)
+   - Email
+   - Username
+   - Domain
+   - Phone
+   - Hash
+   - Keyword
+4. **Enter search query** in the input field
+5. **Click "Search Breaches"** to initiate lookup
+6. **Review results** including breach sources, exposed fields, and dates
+
+### Example Searches
+
+#### Email Search
 
 ### Option 2: Run Locally
 
