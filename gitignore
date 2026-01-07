@@ -1,0 +1,60 @@
+# .gitignore
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS-specific files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+
+# API keys and secrets (CRITICAL - Never commit!)
+API_KEY
+*.key
+secrets/
+config/local.js
+
+# Backup files
+*.bak
+*.backup
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Lock files (optional - commit if using package manager)
+package-lock.json
+yarn.lock
+
+# IDE workspace files
+.vscode/settings.json
+.idea/workspace.xml
