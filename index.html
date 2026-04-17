@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://leakcheck.io https://leakcheck.net;">
+    <meta name="description" content="Enterprise breach intelligence platform — search emails, usernames, and domains across 20+ billion leaked credentials.">
+    <meta property="og:title" content="LeakCheck Enterprise Dashboard">
+    <meta property="og:description" content="Real-time breach detection for your organization.">
     <title>Database Leak Checker - RITAC Solutions</title>
     <style>
         :root {
@@ -438,8 +442,31 @@
                 <div style="font-size: 11px; color: #94a3b8; font-weight: 400;">RITAC Solutions</div>
             </div>
         </a>
-        <div style="font-size: 12px; color: #94a3b8;">Enterprise Database Breach Detection</div>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="font-size: 12px; color: #94a3b8;">Enterprise Database Breach Detection</div>
+            <button id="settingsBtn" onclick="openSettings()" style="background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); color: #06b6d4; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s;">⚙️ Settings</button>
+        </div>
     </nav>
+
+    <!-- Settings Modal -->
+    <div id="settingsOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#1e293b; border:1px solid rgba(148,163,184,0.2); border-radius:16px; padding:32px; width:100%; max-width:440px; box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+            <h2 style="margin:0 0 8px 0; color:#e2e8f0; font-size:20px;">⚙️ Settings</h2>
+            <p style="margin:0 0 24px 0; color:#94a3b8; font-size:14px;">Configure your LeakCheck API key. It is stored locally in your browser.</p>
+            <div id="settingsNotice" style="display:none; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:12px; margin-bottom:20px; color:#fcd34d; font-size:13px;">
+                Please enter your API key to begin
+            </div>
+            <label style="display:block; font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">API Key</label>
+            <input id="apiKeyInput" type="password" placeholder="Enter your LeakCheck.io API key..." style="width:100%; padding:10px 14px; background:#0f172a; border:1px solid rgba(148,163,184,0.2); border-radius:8px; color:#e2e8f0; font-size:14px; outline:none; box-sizing:border-box; margin-bottom:8px;" />
+            <p style="margin:0 0 20px 0; font-size:12px; color:#64748b;">
+                Don't have a key? <a href="https://leakcheck.io" target="_blank" rel="noopener" style="color:#06b6d4; text-decoration:none;">Get one at LeakCheck.io</a>
+            </p>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button onclick="closeSettings()" style="padding:8px 20px; background:transparent; border:1px solid rgba(148,163,184,0.2); color:#94a3b8; border-radius:8px; cursor:pointer; font-size:14px;">Cancel</button>
+                <button onclick="saveSettings()" style="padding:8px 20px; background:linear-gradient(135deg,#06b6d4,#0891b2); border:none; color:#fff; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600;">Save Key</button>
+            </div>
+        </div>
+    </div>
 
     <div class="container">
         <div style="margin-bottom: 40px;">
@@ -479,8 +506,8 @@
         </div>
 
         <div class="tab-buttons">
-            <button class="tab-button active" onclick="switchTab('search')">🔍 Search Database</button>
-            <button class="tab-button" onclick="switchTab('history')">📋 Search History</button>
+            <button class="tab-button active" onclick="switchTab('search', event)">🔍 Search Database</button>
+            <button class="tab-button" onclick="switchTab('history', event)">📋 Search History</button>
         </div>
 
         <div id="searchTab" class="search-container card" style="display: block;">
@@ -604,6 +631,50 @@
     </footer>
 
     <script>
+        // Sanitize user/API data before inserting into innerHTML
+        function sanitize(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Settings modal functions
+        function openSettings(showNotice) {
+            const overlay = document.getElementById('settingsOverlay');
+            overlay.style.display = 'flex';
+            const notice = document.getElementById('settingsNotice');
+            notice.style.display = showNotice ? 'block' : 'none';
+            const stored = localStorage.getItem('leakcheck_api_key') || '';
+            document.getElementById('apiKeyInput').value = stored;
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsOverlay').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (!key) {
+                alert('Please enter a valid API key.');
+                return;
+            }
+            localStorage.setItem('leakcheck_api_key', key);
+            closeSettings();
+        }
+
+        // Close modal on overlay click
+        document.getElementById('settingsOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeSettings();
+        });
+
+        // On page load: if no API key stored, show settings automatically
+        window.addEventListener('DOMContentLoaded', function() {
+            const stored = localStorage.getItem('leakcheck_api_key');
+            if (!stored) {
+                openSettings(true);
+            }
+        });
+
         let searchHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
 
         async function performSearch(e) {
@@ -627,22 +698,19 @@
                 return;
             }
 
+            const apiKey = localStorage.getItem('leakcheck_api_key');
+            if (!apiKey) {
+                openSettings(true);
+                return;
+            }
+
             searchBtn.disabled = true;
             searchBtnText.style.display = 'none';
             searchBtnLoader.style.display = 'block';
 
             try {
-                const apiKey = prompt('Enter your LeakCheck.io API Key:');
-                if (!apiKey) {
-                    searchError.textContent = 'API key is required';
-                    searchBtn.disabled = false;
-                    searchBtnText.style.display = 'inline';
-                    searchBtnLoader.style.display = 'none';
-                    return;
-                }
-
                 const url = `https://leakcheck.io/api/v2/query/${encodeURIComponent(query)}${queryType !== 'auto' ? `?type=${queryType}` : ''}`;
-                
+
                 const response = await fetch(url, {
                     headers: {
                         'Accept': 'application/json',
@@ -666,7 +734,7 @@
 
                 const data = await response.json();
                 displayResults(data, query, queryType);
-                
+
                 const historyEntry = {
                     query,
                     queryType,
@@ -674,7 +742,7 @@
                     status: data.found > 0 ? 'compromised' : 'clean',
                     timestamp: new Date().toLocaleString()
                 };
-                
+
                 searchHistory.unshift(historyEntry);
                 localStorage.setItem('searchHistory', JSON.stringify(searchHistory.slice(0, 100)));
                 updateStats();
@@ -704,13 +772,15 @@
                     <div class="status-icon">✓</div>
                     <div style="flex: 1;">
                         <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #86efac;">No Breaches Found</h3>
-                        <p style="margin: 0; color: #cbd5e1; font-size: 14px;">"${query}" appears to be safe - no data breaches found in our database</p>
+                        <p style="margin: 0; color: #cbd5e1; font-size: 14px;"></p>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 12px; color: #94a3b8;">API Quota</div>
-                        <div style="font-size: 24px; font-weight: 700; color: #06b6d4;">${data.quota || 'N/A'}</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #06b6d4;" id="quotaClean"></div>
                     </div>
                 `;
+                statusBanner.querySelector('p').textContent = `"${query}" appears to be safe - no data breaches found in our database`;
+                document.getElementById('quotaClean').textContent = data.quota || 'N/A';
                 breachSummary.style.display = 'none';
                 breachDetails.style.display = 'none';
                 return;
@@ -720,14 +790,17 @@
             statusBanner.innerHTML = `
                 <div class="status-icon">⚠️</div>
                 <div style="flex: 1;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #fca5a5;">${data.found} Breach${data.found > 1 ? 'es' : ''} Detected</h3>
-                    <p style="margin: 0; color: #cbd5e1; font-size: 14px;">"${query}" has been compromised in ${data.found} known data breach${data.found > 1 ? 'es' : ''}</p>
+                    <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #fca5a5;" id="bannerTitle"></h3>
+                    <p style="margin: 0; color: #cbd5e1; font-size: 14px;" id="bannerDesc"></p>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 12px; color: #94a3b8;">API Quota</div>
-                    <div style="font-size: 24px; font-weight: 700; color: #06b6d4;">${data.quota || 'N/A'}</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #06b6d4;" id="quotaCompromised"></div>
                 </div>
             `;
+            document.getElementById('bannerTitle').textContent = `${data.found} Breach${data.found > 1 ? 'es' : ''} Detected`;
+            document.getElementById('bannerDesc').textContent = `"${query}" has been compromised in ${data.found} known data breach${data.found > 1 ? 'es' : ''}`;
+            document.getElementById('quotaCompromised').textContent = data.quota || 'N/A';
 
             const uniqueSources = new Set();
             const allFields = new Set();
@@ -757,7 +830,7 @@
             if (hasPasswords) {
                 const criticalFieldsDiv = document.getElementById('criticalFields');
                 criticalFieldsDiv.innerHTML = Array.from(criticalFields)
-                    .map(field => `<span class="breach-badge critical">🔑 ${field.replace(/_/g, ' ')}</span>`)
+                    .map(field => `<span class="breach-badge critical">🔑 ${sanitize(field.replace(/_/g, ' '))}</span>`)
                     .join('');
             }
 
@@ -769,15 +842,15 @@
             const allFieldsDiv = document.getElementById('allFields');
             allFieldsDiv.innerHTML = Array.from(allFields)
                 .map(field => {
-                    const isCritical = field.toLowerCase().includes('password') || 
+                    const isCritical = field.toLowerCase().includes('password') ||
                                       field.toLowerCase().includes('pass') ||
                                       field.toLowerCase().includes('ssn') ||
                                       field.toLowerCase().includes('credit');
                     const isEmail = field.toLowerCase().includes('email') || field.toLowerCase().includes('mail');
-                    
+
                     const badgeClass = isCritical ? 'critical' : (isEmail ? 'warning' : 'info');
                     const prefix = isCritical ? '🔴' : (isEmail ? '📧' : '📌');
-                    return `<span class="breach-badge ${badgeClass}">${prefix} ${field.replace(/_/g, ' ')}</span>`;
+                    return `<span class="breach-badge ${badgeClass}">${prefix} ${sanitize(field.replace(/_/g, ' '))}</span>`;
                 })
                 .join('');
 
@@ -798,20 +871,20 @@
                         <div class="breach-group-header">
                             <h4 style="margin: 0; color: #06b6d4; display: flex; align-items: center; gap: 8px;">
                                 <span style="font-size: 18px;">📁</span>
-                                ${source}
-                                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">${breaches.length} record${breaches.length > 1 ? 's' : ''}</span>
+                                ${sanitize(source)}
+                                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">${sanitize(String(breaches.length))} record${breaches.length > 1 ? 's' : ''}</span>
                             </h4>
                         </div>
                         ${breaches.map(breach => `
                             <div class="breach-item">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                    <strong style="color: #e2e8f0;">${breach.source.name}</strong>
-                                    ${breach.source.breach_date ? `<span style="font-size: 12px; color: #94a3b8;">📅 ${new Date(breach.source.breach_date).toLocaleDateString()}</span>` : ''}
+                                    <strong style="color: #e2e8f0;">${sanitize(breach.source.name)}</strong>
+                                    ${breach.source.breach_date ? `<span style="font-size: 12px; color: #94a3b8;">📅 ${sanitize(new Date(breach.source.breach_date).toLocaleDateString())}</span>` : ''}
                                 </div>
                                 ${breach.fields ? `<div style="margin-top: 8px;">
                                     <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">Exposed Fields:</div>
                                     <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                        ${breach.fields.map(field => `<span class="breach-badge info">${field.replace(/_/g, ' ')}</span>`).join('')}
+                                        ${breach.fields.map(field => `<span class="breach-badge info">${sanitize(field.replace(/_/g, ' '))}</span>`).join('')}
                                     </div>
                                 </div>` : ''}
                             </div>
@@ -845,20 +918,20 @@
 
             historyBody.innerHTML = searchHistory.map((entry, idx) => `
                 <tr>
-                    <td>${entry.query}</td>
-                    <td><span style="font-size: 12px; color: #94a3b8;">${entry.queryType}</span></td>
+                    <td>${sanitize(entry.query)}</td>
+                    <td><span style="font-size: 12px; color: #94a3b8;">${sanitize(entry.queryType)}</span></td>
                     <td>
                         <span class="breach-badge ${entry.status === 'compromised' ? 'critical' : entry.status === 'clean' ? 'info' : 'warning'}">
                             ${entry.status === 'compromised' ? '⚠️ Compromised' : entry.status === 'clean' ? '✓ Clean' : '❌ Error'}
                         </span>
                     </td>
-                    <td><strong>${entry.resultsCount}</strong></td>
-                    <td style="font-size: 12px; color: #94a3b8;">${entry.timestamp}</td>
+                    <td><strong>${sanitize(String(entry.resultsCount))}</strong></td>
+                    <td style="font-size: 12px; color: #94a3b8;">${sanitize(entry.timestamp)}</td>
                 </tr>
             `).join('');
         }
 
-        function switchTab(tab) {
+        function switchTab(tab, event) {
             const searchTab = document.getElementById('searchTab');
             const historyTab = document.getElementById('historyTab');
             const buttons = document.querySelectorAll('.tab-button');
